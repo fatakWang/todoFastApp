@@ -1,0 +1,42 @@
+<import name="tabbar" src="../../components/tabbar.ux"></import>
+<import name="main" src="../../components/main.ux"></import>
+<import name="me" src="../../components/me.ux"></import>
+
+<template>
+  <div>
+    <main show="{{current === 'main'}}"></main>
+    <me show="{{current === 'me'}}"></me>
+    <tabbar ontap="handleTap"></tabbar>
+  </div>
+</template>
+
+<script>
+export default {
+  data: {
+    current: 'main',
+
+  },
+
+  onInit() {
+    this.$broadcast('showPage')
+    this.$broadcast('showPage2')
+  },
+  onShow() {
+    this.$broadcast('showPage')
+    this.$broadcast('showPage2')
+  },
+
+  handleTap(e) {
+    if (this.current !== 'main' && e.detail.current === 'main') {
+      this.$broadcast('showPage')
+    }
+    if (this.current !== 'me' && e.detail.current === 'me') {
+      this.$broadcast('showPage2')
+    }
+    this.current = e.detail.current
+  }
+
+}
+</script>
+
+<style></style>

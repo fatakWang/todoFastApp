@@ -1,0 +1,165 @@
+<import name="memo" src="../components/memo.ux"></import>
+
+<template>
+  <div class="main-wrap">
+    <div class="all no-result" if="{{memoList.length === 0}}">
+      <image src="../assets/images/no-result.png"></image>
+      <text>现在还什么都没有</text>
+      <text>快去添加一条待办吧</text>
+    </div>
+    <div class="content-wrap column" else>
+      <div for="memoList">
+        <memo memo="{{$item}}" index="{{$idx}}" ondelete="delete"></memo>
+      </div>
+    </div>
+    <div
+      class="add-btn"
+      onclick="add"
+      ontouchmove="touchmove"
+      style="left: {{left}}px;top: {{top}}px;"
+    >
+      <image src="../assets/images/add.png"></image>
+    </div>
+  </div>
+</template>
+
+<script>
+import { getMemoList, setMemoList } from '../helper/data.js'
+import router from '@system.router'
+import vibrator from '@system.vibrator'
+import prompt from '@system.prompt'
+
+export default {
+  data() {
+    return {
+      memoList: [],
+      now: 5,
+      left: 25,//add按钮的位置状态
+      top: 600,//add按钮的位置状态
+    }
+  },
+  touchmove(e) {
+    if (e.touches[0].clientX >= 25 && e.touches[0].clientX <= 320) {
+      this.left = e.touches[0].clientX - 20
+    }
+    if (e.touches[0].clientY >= 20 && e.touches[0].clientY <= 620) {
+      this.top = e.touches[0].clientY - 20
+    }
+  },//add按钮的移动
+
+
+
+  onInit() {
+    const date = new Date()
+    this.memoList = getMemoList()
+    this.$on('showPage', this.refreshList)//添加监视
+    this.$on('TODO-DOING', (evt) => {
+      this.memoList[evt.detail.index].status = 'DOING'//改变状态
+      this.memoList[evt.detail.index].startYear = date.getFullYear()//获得年
+      this.memoList[evt.detail.index].startMonth = date.getMonth() + 1//获得月
+      this.memoList[evt.detail.index].startDate = date.getDate()//获得日
+      this.memoList[evt.detail.index].startHour = date.getHours()//获得小时
+      this.memoList[evt.detail.index].startMinute = date.getMinutes()//获得分钟
+      if (this.memoList[evt.detail.index].startMinute < 10) {
+        this.memoList[evt.detail.index].startTime = this.memoList[evt.detail.index].startHour + ':0' +
+          this.memoList[evt.detail.index].startMinute;
+      }
+      else {
+        this.memoList[evt.detail.index].startTime = this.memoList[evt.detail.index].startHour + ':' +
+          this.memoList[evt.detail.index].startMinute;
+      }//输出格式更加整齐，minute为个位数时，添加一个0
+      this.memoList[evt.detail.index].start = this.startMinute + this.startHour * 100 + this.startDate * 10000 + this.startMonth * 1000000 + this.startYear * 100000000,
+        this.memoList[evt.detail.index].starttimes = this.memoList[evt.detail.index].startYear + '-' + this.memoList[evt.detail.index].startMonth + '-' + this.memoList[evt.detail.index].startDate + '   ' + this.memoList[evt.detail.index].startTime,
+        setMemoList(this.memoList)//以上为修改时间，让todo变成doing时，starttime变成现在的时间
+    })
+    this.$on('DOING-DONE', (evt) => {
+      this.memoList[evt.detail.index].status = 'DONE'
+      setMemoList(this.memoList)//添加监视
+    })
+  },
+
+  onShow() {
+    this.$on('showPage', this.refreshList)//添加监视
+  },
+
+  add() {
+    router.push({
+      uri: 'pages/add'
+    })//跳转到add页面
+  },
+
+  async refreshList() {
+    this.memoList = (await getMemoList()) || []
+    const date = new Date()
+    this.now = date.getMinutes() + date.getHours() * 100 + date.getDate() * 10000 +
+      (date.getMonth() + 1) * 1000000 + /*  */date.getFullYear() * 100000000//计算现在时间
+    for (var key in this.memoList) {
+      if (this.now > this.memoList[key].start && (this.memoList[key].status == 'TODO')) {
+        this.memoList[key].status = 'DOING'
+      }
+    }//若有超时，则todo变为doing
+    for (var key in this.memoList) {
+      if (this.now > this.memoList[key].end && (this.memoList[key].status === 'DOING' 
+      || this.memoList[key].status === 'TODO')) {
+        prompt.showToast({
+          message: '你有一件事到期了'
+        })//弹窗警告
+        vibrator.vibrate({ mode: 'short' })//多调用几次，使得震动更加明显
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        this.memoList[key].status = 'OVERTIME'//如果ddl超过了，状态就变为overtime
+      }
+    }
+    setMemoList(this.memoList)//存储现在的状态
+
+  },
+
+  delete(e) {
+    this.memoList.splice(e.detail.index, 1)
+    setMemoList(this.memoList)
+  }
+}
+</script>
+
+<style lang="less">
+@import '../assets/styles/style.less';
+
+.content-wrap {
+  padding-bottom: 52px;
+}
+
+.no-result {
+  .flex-box-mixins(column, flex-start, center);
+  image {
+    width: 80px;
+    height: 80px;
+    margin-top: 200px;
+    margin-bottom: 15px;
+  }
+  text {
+    font-size: 13px;
+    color: #e2e2e2;
+  }
+}
+
+.add-btn {
+  .flex-box-mixins;
+  width: 50px;
+  height: 50px;
+  border-radius: 30px;
+  background-color: @brand;
+  position: absolute;
+  bottom: 80px;
+  right: 25px;
+  image {
+    width: 20px;
+    height: 20px;
+  }
+}
+</style>

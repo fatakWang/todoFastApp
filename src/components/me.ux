@@ -1,0 +1,253 @@
+<template>
+  <div class="me-wrap">
+    <!-- 统计页面 -->
+
+    <stack
+      style="background-color: #f0f0f0;
+   flex-direction: column;"
+    >
+      <!-- canvas -->
+      <div class="canvas-container">
+        <!-- 图1：统计重要，一般，普通事件数目 -->
+        <canvas id="line-canvas"></canvas>
+        <text class="canvas-text">标签统计</text>
+        <!-- 图2：统计todo、doing、done、overtime事件个数的条形图 -->
+        <canvas id="canvas-bar"></canvas>
+        <text class="canvas-text">当前事项</text>
+      </div>
+    </stack>
+    <div class="option-item" style="margin-top:0px;" onclick="clearMemoList">
+      <text>清除记录</text>
+      <image src="../assets/images/right-arrow.webp"></image>
+    </div>
+  </div>
+</template>
+
+<script>
+import {
+  clearMemoList
+} from '../helper/utils.js'
+import prompt from '@system.prompt'
+import { getMemoList, setMemoList } from '../helper/data.js'
+
+export default {
+  data() {
+    return {
+      memoList: [],
+      todoNum: 0,
+      doingNum: 0,
+      doneNum: 0,
+      overtimeNum: 0,
+      normal: 0,
+      common: 0,
+      important: 0,
+
+    }
+  },
+  onInit() {
+    this.$on('showPage2', this.refreshPage2)
+  },
+  onShow() {
+    this.$on('showPage2', this.refreshPage2)
+
+  },
+  drawBarChartCanvas() {
+    //定义画布长度、宽度、画布内高度、条形图间隔、条形宽度
+    const Width = 750
+    const Height = 350
+    const CanvasHeight = 250
+    const step = 75
+    const barChartWidth = 40
+    //获取todo、doing、done、overtime四个状态的长度
+    let todoListLength = this.todoNum
+    let doingListLength = this.doingNum
+    let doneListLength = this.doneNum
+    let overtimeListLength = this.overtimeNum
+    //求最大值、最小值
+    let min = Math.min(todoListLength, doingListLength, doneListLength, overtimeListLength)
+    let max = Math.max(todoListLength, doingListLength, doneListLength, overtimeListLength)
+    //求todo、doing、done、overtime的横坐标
+    const todoIndex = 35
+    let doingIndex = todoIndex + step
+    let doneIndex = doingIndex + step
+    let overtimeIndex = doneIndex + step
+    //求todo、doing、done、overtime三个条形的对应高度
+    //公式：条形高度 = 个数 / （最大值 + 1） * 画布高度
+    let todo = 320 - todoListLength / (max + 1) * CanvasHeight
+    let doing = 320 - doingListLength / (max + 1) * CanvasHeight
+    let done = 320 - doneListLength / (max + 1) * CanvasHeight
+    let overtime = 320 - overtimeListLength / (max + 1) * CanvasHeight
+    //创建canvas-bar画布
+    const canvas = this.$element('canvas-bar')
+    const ctx = canvas.getContext('2d')
+    //绘制条形图
+    //擦除矩形区域，相当于用白色底色填充绘制
+    ctx.clearRect(0, 0, Width, Height)
+    //设置填充色
+    ctx.fillStyle = '#057748'
+    //填充绘制矩形
+    ctx.fillRect(todoIndex, todo, barChartWidth, 320 - todo)
+    ctx.fillStyle = '#4b5cc4'
+    ctx.fillRect(doingIndex, doing, barChartWidth, 320 - doing)
+    ctx.fillStyle = '#725e82'
+    ctx.fillRect(doneIndex, done, barChartWidth, 320 - done)
+    ctx.fillStyle = '#ff0000'
+    ctx.fillRect(overtimeIndex, overtime, barChartWidth, 320 - overtime)
+    //绘制统计文字
+    //设置文字字体
+    ctx.font = '10px'
+    ctx.fillStyle = '#000000'
+    //填充绘制文字
+    ctx.fillText(`${todoListLength} todo`, todoIndex + 5, todo - 20)
+    ctx.fillText(`${doingListLength} doing`, doingIndex + 5, doing - 20)
+    ctx.fillText(`${doneListLength} done`, doneIndex + 5, done - 20)
+    ctx.fillText(`${overtimeListLength} overtime`, overtimeIndex + 5, overtime - 20)
+  },
+
+  drawLineCanvas() {
+    //绘制策略为： 曲线高度 = （个数 - 最小值） / 最值差 * 画布高度
+    let min = Math.min(this.normal, this.common, this.important)
+    let gap = Math.max(this.normal, this.common, this.important) - min
+    if (gap == 0) gap = 1
+    let normal = 150 - (this.normal - min) / gap * 100
+    let common = 150 - (this.common - min) / gap * 100
+    let important = 150 - (this.important - min) / gap * 100
+    const canvas = this.$element('line-canvas')
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, 750, 350)
+    //绘制圆点
+    ctx.arc(70, normal, 3, 0, 2 * Math.PI)
+    ctx.fill()
+    ctx.moveTo(180, common)
+    ctx.arc(180, common, 3, 0, 2 * Math.PI)
+    ctx.fill()
+    ctx.moveTo(300, important)
+    ctx.arc(300, important, 3, 0, 2 * Math.PI)
+    ctx.fill()
+    //绘制三阶贝塞尔曲线
+    // ----------------------------->x
+    // |          ·cp2      ·x2
+    // |
+    // |  ·x1     ·cp1
+    // y
+    ctx.moveTo(15, 150)
+    ctx.bezierCurveTo(15, 150, 40, normal + 50, 70, normal)
+    ctx.bezierCurveTo(70, normal, 130, common - 100, 180, common)
+    ctx.bezierCurveTo(180, common, 240, common + 100, 300, important)
+    ctx.bezierCurveTo(300, important, 320, important - 50, 350, 150)
+    ctx.stroke()
+    //绘制统计文字
+    ctx.font = '10px sans-serif'
+    ctx.fillText(`${this.normal} 普通`, 70, normal - 30)
+    ctx.fillText(`${this.common} 一般`, 200, common - 30)
+    ctx.fillText(`${this.important} 重要`, 300, important - 30)
+
+
+  },
+
+  async refreshPage2() {
+    this.todoNUM = this.doingNum = this.doneNum = this.overtimeNum = 0
+    this.normal = this.common = this.important = 0
+    this.memoList = (await getMemoList()) || []
+    let length = 0
+    this.memoList.forEach((element) => {
+      //if(element.status == 'TODO')this.todoNum++;这里出了一点意外，如果用正常的方式获取todoNum，就会出问题
+      if (element.status == 'DOING') this.doingNum++;
+      else if (element.status == 'DONE') this.doneNum++;
+      else if (element.status == 'OVERTIME') this.overtimeNum++;
+      if (element.label == '普通') this.normal++;
+      else if (element.label == '一般') this.common++;
+      else if (element.label == '重要') this.important++;
+      length++
+    })
+    this.todoNum = length - this.doingNum - this.doneNum - this.overtimeNum//于是我用了总数-其他三个状态的数量之和,就得到了todoNum
+
+    this.drawBarChartCanvas()
+    this.drawLineCanvas()
+  },
+
+
+
+
+  clearMemoList() {
+    prompt.showDialog({
+      title: '提示',
+      message: '是否清空事项',
+      buttons: [
+        {
+          text: '确定',
+          color: '#ff2828'
+        },
+        {
+          text: '取消',
+          color: '#000000'
+        }
+      ],
+      success: function (data) {
+        console.log('handling callback', data)
+        if (data.index === 0) {
+          clearMemoList()
+          prompt.showToast({
+            message: '删除成功'//一次性清除所有记录
+          })
+        }
+      },
+      cancel: function () {
+        console.log('handling cancel')
+      },
+      fail: function (data, code) {
+        console.log(`handling fail, code = ${code}`)
+      }
+    })
+  }
+}
+</script>
+
+<style lang="less">
+@import '../assets/styles/style.less';
+
+.me-wrap {
+  .flex-box-mixins(column, flex-start, flex-start);
+  .all;
+  background-color: #efefef;
+}
+
+.option-item {
+  .flex-box-mixins(row, space-between, center);
+  width: 100%;
+  height: 40px;
+  padding: 0 20px;
+
+  text {
+    .title-text;
+    color: #333333;
+  }
+
+  image {
+    width: 5px;
+    height: 10px;
+  }
+}
+
+.canvas-container {
+  flex: 1;
+  flex-direction: column;
+  height: 600px;
+  #canvas-bar {
+    height: 450px;
+    width: 750px;
+  }
+  #line-canvas {
+    height: 300px;
+    margin-bottom: 0px;
+    width: 750px;
+  }
+  .canvas-text {
+    height: 70px;
+    font-size: 10px;
+    text-align: center;
+    padding-top: 30px;
+    font-family: serif;
+  }
+}
+</style>

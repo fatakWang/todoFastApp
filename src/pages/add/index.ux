@@ -1,0 +1,514 @@
+<import name="menu-bar" src="../../components/menubar.ux"></import>
+
+<template>
+  <div class="add-wrap">
+    <menu-bar></menu-bar>
+    <input
+      class="title"
+      type="text"
+      placeholder="请输入标题"
+      value="{{title}}"
+      maxlength="50"
+      onchange="getTitle"
+    />
+    <textarea
+      class="content"
+      placeholder="请输入内容"
+      value="{{eventName}}"
+      maxlength="200"
+      onchange="getContent"
+    ></textarea>
+    <div class="label-wrap">
+      <text
+        class="{{label === '普通'?'common':''}}"
+        onclick="changeLabel('普通')"
+        >普通</text
+      >
+      <text
+        class="{{label === '一般'?'middle':''}}"
+        onclick="changeLabel('一般')"
+        >一般</text
+      >
+      <text
+        class="{{label === '重要'?'important':''}}"
+        onclick="changeLabel('重要')"
+        >重要</text
+      >
+    </div>
+
+    <!-- 输入开始时间 -->
+    <div class="time-area">
+      <text style="font-size: 20px;">开始</text>
+      <div class="time-input">
+        <!-- 选择开始时间的年、月、日 -->
+        <picker
+          class="date-picker"
+          type="date"
+          value="{{startYear+'-'+startMonth+'-'+startDate}}"
+          onchange="getStartDate"
+        ></picker>
+        <!-- 日历图片 -->
+        <div class="date-image"></div>
+        <!-- 选择开始时间的时、分 -->
+        <picker
+          class="time-picker"
+          type="time"
+          value="{{startTime}}"
+          onchange="getStartTime"
+        ></picker>
+        <!-- 时钟图片 -->
+        <div class="time-image"></div>
+      </div>
+    </div>
+    <!-- 输入结束时间 -->
+    <div class="time-area">
+      <text style="font-size: 20px;">结束</text>
+      <div class="time-input">
+        <!-- 选择结束时间的年、月、日 -->
+        <picker
+          class="date-picker"
+          type="date"
+          value="{{endYear+'-'+endMonth+'-'+endDate}}"
+          onchange="getEndDate"
+        ></picker>
+        <!-- 日历图片 -->
+        <div class="date-image"></div>
+        <!-- 选择结束时间的时、分 -->
+        <picker
+          class="time-picker"
+          type="time"
+          value="{{endTime}}"
+          onchange="getEndTime"
+        ></picker>
+        <!-- 时钟图片 -->
+        <div class="time-image"></div>
+      </div>
+    </div>
+
+    <div
+      class="asr-btn {{scale}} {{ 'asr-btn-enabled' }}"
+      ontouchstart="startAsr"
+      ontouchend="endAsr"
+    >
+      <div class="asr-image2"></div>
+    </div>
+
+
+    
+    <div class="add-btn">
+      <text onclick="addMemo" style="opacity: {{canAdd ? '1' : '0.4'}};"
+        >完成</text
+      >
+    </div>
+  </div>
+</template>
+
+<script>
+import { getMemoList, setMemoList } from '../../helper/data.js'
+import asr from '@service.asr'
+import storage from '@system.storage'
+import vibrator from '@system.vibrator'
+import router from '@system.router'
+import prompt from '@system.prompt'
+
+export default {
+  data() {
+    return {
+      index: '',
+      title: '',
+      content: '',
+      label: '普通',
+      eventName: '',
+      nameBackUp: '',
+      scale: '',
+      startYear: 2021,
+      startMonth: 8,
+      startDate: 24,
+      startHour: 20,
+      startMinute: 28,
+      endYear: 2021,
+      endMonth: 8,
+      endDate: 24,
+      endHour: 20,
+      endMinute: 28,
+      startTime: 12,
+      endTime: 51,
+      status: 'TODO',
+      isexit: false
+    }
+  },
+
+
+
+  computed: {
+    canAdd() {
+      if (this.title) {
+        return true
+      } else {
+        return false
+      }
+    }
+  },
+  onInit() {
+    this.initAsr();
+    if (this.isexit == false) {
+      this.initTime()
+    }
+  },
+  onDestroy() {
+    asr.close()
+  },
+  //初始化时间输入内容（FROM为当前时间，TO为一天后）
+  initTime() {
+    //定义时间常数
+    const HOUR = 24
+    const MINUTE = 60
+    const SECOND = 60
+    const MILLISECOND = 1000
+
+    const date = new Date()
+    this.startYear = date.getFullYear()
+    this.startMonth = date.getMonth() + 1
+    this.startDate = date.getDate()
+    this.startHour = date.getHours()
+    this.startMinute = date.getMinutes()
+    if (this.startMinute < 10) {
+      this.startTime = this.startHour + ':0' + this.startMinute;
+    }
+    else {
+      this.startTime = this.startHour + ':' + this.startMinute;
+    }
+    date.setTime(date.getTime() + HOUR * MINUTE * SECOND * MILLISECOND)
+    this.endYear = date.getFullYear()
+    this.endMonth = date.getMonth() + 1
+    this.endDate = date.getDate()
+    this.endHour = date.getHours()
+    this.endMinute = date.getMinutes()
+    if (this.endMinute < 10) {
+      this.endTime = this.endHour + ':0' + this.endMinute;
+    }
+    else {
+      this.endTime = this.endHour + ':' + this.endMinute;
+    }
+
+  },
+  getStartDate(e) {
+    this.startDateX = e.year + '-' + (e.month + 1) + '-' + e.day
+    this.startYear = e.year
+    this.startMonth = e.month + 1
+    this.startDate = e.day
+  },
+  getStartTime(e) {
+    if (e.minute < 10) {
+      this.startTime = e.hour + ':0' + e.minute;
+    }
+    else {
+      this.startTime = e.hour + ':' + e.minute;
+    }
+    this.startHour = e.hour
+    this.startMinute = e.minute
+
+  },
+  getEndDate(e) {
+    this.endDateX = e.year + '-' + (e.month + 1) + '-' + e.day
+    this.endYear = e.year
+    this.endMonth = e.month + 1
+    this.endDate = e.day
+  },
+  getEndTime(e) {
+    if (e.minute < 10) {
+      this.endTime = e.hour + ':0' + e.minute;
+    }
+    else {
+      this.endTime = e.hour + ':' + e.minute;
+    }
+    this.endHour = e.hour
+    this.endMinute = e.minute
+  },
+
+  initAsr() {
+    let that = this
+    asr.init({
+      fail: function () {
+        that.$app.$def.makeToast('init failed!')
+      }
+    })
+    asr.onpartialresult = ({ result }) => {
+      this.eventName = this.nameBackUp + `${result}`
+    }
+    asr.oncompleteresult = ({ result }) => {
+      this.eventName = this.nameBackUp + `${result.match(/\[(.*)\]/)[1]}`
+    }
+    asr.onerror = (error) => {
+      this.text = `onerror: ${error}`
+    }
+  },
+  startAsr() {
+    let that = this
+    this.scale = 'scale'
+    this.nameBackUp = this.eventName
+    asr.start({
+      success: function () {
+        //多调用几遍使震动明显一些
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+        vibrator.vibrate({ mode: 'short' })
+      },
+      fail: function (data, code) {
+        that.eventName = `start fail, code=${code}, data=${data}`
+      }
+    })
+  },
+  endAsr() {
+    let that = this
+    this.scale = 'stop'
+    asr.stop({
+      success: function () { },
+      fail: function (data, code) {
+        that.eventName = `stop fail, code=${code}, data=${data}`
+      }
+    })
+  },
+
+  getTitle(e) {
+    this.title = e.value
+  },
+
+  getContent(e) {
+    this.eventName = e.value
+  },
+  updateValue(evt) {
+    this.eventName = evt.value
+  },
+
+  async addMemo() {
+    if (this.title) {
+      const memo = {
+        title: this.title,
+        content: this.eventName,
+        label: this.label,
+        starttimes: this.startYear + '-' + this.startMonth + '-' + this.startDate + '   ' + this.startTime,
+        status: this.status,
+        endtimes: this.endYear + '-' + this.endMonth + '-' + this.endDate + '   ' + this.endTime,
+        start: this.startMinute + this.startHour * 100 + this.startDate * 10000 + this.startMonth * 1000000 + this.startYear * 100000000,
+        end: this.endMinute + this.endHour * 100 + this.endDate * 10000 + this.endMonth * 1000000 + this.endYear * 100000000,
+        startYear: this.startYear,
+        startMonth: this.startMonth,
+        startDate: this.startDate,
+        startHour: this.startHour,
+        startMinute: this.startMinute,
+        endYear: this.endYear,
+        endMonth: this.endMonth,
+        endDate: this.endDate,
+        endHour: this.endHour,
+        endMinute: this.endMinute,
+        startTime: this.startTime,
+        endTime: this.endTime,
+      }
+
+      const memoList = await getMemoList()
+      if (this.index !== '') {
+        memoList[this.index] = memo
+      } else {
+        memoList.push(memo)
+      }
+      setMemoList(memoList)
+      router.back()
+    }
+    else {
+      prompt.showToast({
+        message: '请输入标题'
+      })
+    }
+  },
+
+
+
+  changeLabel(label) {
+    this.label = label
+  }
+}
+</script>
+
+<style lang="less">
+@import '../../assets/styles/style.less';
+
+.label-wrap {
+  padding: 20px;
+  text {
+    .label-text;
+    padding: 5px 15px;
+    border-width: @border-size;
+    border-style: @border-style;
+    border-color: @label-color;
+    margin-right: 20px;
+    border-radius: 15px;
+  }
+  .common {
+    color: @label-select-color;
+    background-color: @gray;
+    border-color: @gray;
+  }
+  .middle {
+    color: @label-select-color;
+    background-color: @santas-gray;
+    border-color: @santas-gray;
+  }
+  .important {
+    color: @label-select-color;
+    background-color: @dark-red;
+    border-color: @dark-red;
+  }
+}
+
+.add-wrap {
+  .flex-box-mixins(column, flex-start, flex-start);
+}
+
+.add-btn {
+  .border-top;
+  position: absolute;
+  bottom: 0px;
+  width: 100%;
+  height: 70px;
+  padding: 15px 20px;
+  text {
+    width: 320px;
+    height: 40px;
+    background-color: @brand;
+    border-radius: 20px;
+    font-size: 16px;
+    color: #ffffff;
+    text-align: center;
+    line-height: 18px;
+    font-weight: bold;
+  }
+}
+
+.title {
+  .border-bottom;
+  .title-text;
+  width: 100%;
+  height: 50px;
+  placeholder-color: @placeholder-color;
+  padding: 5px 15px;
+  caret-color: @brand;
+}
+
+.content {
+  .border-bottom;
+  .content-text;
+  width: 100%;
+  height: 150px;
+  placeholder-color: @placeholder-color;
+  padding: 5px 15px;
+  caret-color: @brand;
+}
+.asr-image2 {
+  width: 70px;
+  height: 50px;
+  margin: 35px 35px 30px 37.5px;
+  border-width: 0px;
+  background-image: url('/assets/images/microphone.png');
+}
+
+.asr-btn-enabled {
+  flex: 0;
+  height: 120px;
+  width: 120px;
+  border-radius: 60px;
+  border-width: 5px;
+  border-color: rgb(16, 150, 223);
+  align-self: center;
+  margin-top: 70px;
+  background-color: rgb(246, 246, 246);
+}
+
+.asr-btn-disabled {
+  height: 0px;
+  width: 0px;
+}
+
+/* 动画 */
+.scale {
+  animation-name: scale;
+  animation-duration: 200ms;
+  animation-fill-mode: forwards;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+}
+
+@keyframes scale {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.6);
+  }
+}
+
+.stop {
+  animation-name: stop;
+  animation-duration: 100ms;
+  animation-fill-mode: forwards;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+}
+
+@keyframes stop {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.time-area {
+  flex-direction: row;
+  height: 50px;
+  width: 95%;
+}
+.time-input {
+  flex-direction: row;
+  height: 50px;
+  width: 500px;
+  border-radius: 0px;
+  margin-bottom: 10px;
+  background-color: #ffffff;
+  border: 3px solid #f0f0f0;
+}
+.date-picker {
+  width: 130px;
+  margin-left: 10px;
+  flex: 0;
+  font-family: serif;
+  font-size: 20px;
+}
+.time-picker {
+  width: 100px;
+  margin-left: 10px;
+  flex: 0;
+  font-family: serif;
+  font-size: 20px;
+}
+.date-image {
+  width: 40px;
+  height: 40px;
+  margin: 0px 5px 5px 5px;
+  border-width: 0px;
+  background-image: url('/assets/images/calendar.png');
+}
+.time-image {
+  width: 40px;
+  height: 40px;
+  margin: 0px 10px 30px 5px;
+  border-width: 0px;
+  background-image: url('/assets/images/clock.png');
+}
+</style>

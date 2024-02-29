@@ -1,0 +1,9 @@
+<script>
+/**
+ * @desc: 应用级别的配置、方法，供所有页面公用；
+ */
+const injectRef = Object.getPrototypeOf(global) || global
+injectRef.regeneratorRuntime = require('@babel/runtime/regenerator')
+
+export default {}
+</script>

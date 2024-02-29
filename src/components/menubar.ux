@@ -1,0 +1,35 @@
+<template>
+  <div class="menubar-wrap">
+    <image
+      class="back-icon"
+      src="../assets/images/back.png"
+      onclick="back"
+    ></image>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+
+export default {
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style lang="less">
+@import '../assets/styles/style.less';
+
+.menubar-wrap {
+  width: 100%;
+  height: 48px;
+  background-color: @brand;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.back-icon {
+  width: 20px;
+}
+</style>

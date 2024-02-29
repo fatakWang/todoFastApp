@@ -1,0 +1,274 @@
+<template>
+  <stack>
+    <div if="{{memo.status=='DONE'}}" class="delete-wrap" onclick="delete">
+      <image src="../assets/images/delete.png"></image>
+    </div>
+    <div
+      if="{{memo.status=='TODO'}}"
+      class="finish-wrap"
+      onclick="finishTODO(index)"
+    >
+      <image src="../assets/images/finish4.png"></image>
+    </div>
+    <div
+      if="{{memo.status=='OVERTIME'}}"
+      class="finish-wrap"
+      onclick="finishDOING(index)"
+    >
+      <image src="../assets/images/finish4.png"></image>
+    </div>
+    <div
+      if="{{memo.status=='DOING'}}"
+      class="finish-wrap"
+      onclick="finishDOING(index)"
+    >
+      <image src="../assets/images/finish4.png"></image>
+    </div>
+
+    <div
+      class="memo-item"
+      style="right: {{right}}px;"
+      onclick="turnToEdit()"
+      ontouchstart="touchstart"
+      ontouchmove="touchmove"
+      ontouchend="touchend"
+      ontouchcancel="touchcancel"
+    >
+      <text class="status">{{ memo.status }}</text>
+      <div class="title-wrap">
+        <text class="title">{{ memo.title }}</text>
+        <text class="label" style="{{memo.label | calLabelColor}}">{{
+          memo.label
+        }}</text>
+      </div>
+      <div class="content-wrap">
+        <text class="content">{{ memo.content }}</text>
+      </div>
+      <div class="time-wrap">
+        <text style="font-size:10px ">开始</text>
+        <text class="time">{{ memo.starttimes }}</text>
+      </div>
+      <div class="time-wrap">
+        <text style="font-size:10px ">期限</text>
+        <text class="time">{{ memo.endtimes }}</text>
+      </div>
+    </div>
+  </stack>
+</template>
+
+<script>
+import router from '@system.router'
+import prompt from '@system.prompt'
+import vibrator from '@system.vibrator'
+export default {
+  data() {
+    return {
+      startPos: '',
+      right: 0,
+      canMove: true,
+      now: 5
+    }
+  },
+
+  touchstart(e) {
+    console.log('start', e)
+    if (this.right !== 0) {//不让它右滑
+      this.right = 0
+      this.canMove = false
+    } else {
+      this.startPos = e.touches[0].clientX
+      this.canMove = true
+    }
+  },
+
+  touchmove(e) {
+    console.log('move', e)
+    if (this.startPos > e.touches[0].clientX && this.canMove) {
+      //左滑
+      const right = this.startPos - e.touches[0].clientX
+      this.right = right
+    }
+  },
+
+  touchend(e) {
+    console.log('end', e)
+    if (this.right >= 40) {
+      this.right = 60
+    } else {
+      this.right = 0
+    }
+  },
+
+  touchcancel(e) {
+    console.log('cancel', e)
+  },
+
+
+  props: {
+    memo: {
+      default: {}
+    },
+    index: ''
+  },
+
+  finishTODO(index) {
+
+    this.$dispatch('TODO-DOING', { index: index })//触发main页面的监视
+    this.right = 0;
+  },
+
+
+  finishDOING(index) {
+
+    prompt.showToast({
+      message: '恭喜你，完成了一件事'
+    })
+
+    this.$dispatch('DOING-DONE', { index: index })//触发main页面的监视
+    this.right = 0;
+  },
+
+ 
+
+
+  turnToEdit() {
+    router.push({
+      uri: 'pages/add',
+      params: {
+        title: this.memo.title,
+        eventName: this.memo.content,
+        index: this.index,
+        status: this.memo.status,
+        isexit: true,
+        startYear: this.memo.startYear,
+        startMonth: this.memo.startMonth,
+        startDate: this.memo.startDate,
+        startHour: this.memo.startHour,
+        startMinute: this.memo.startMinute,
+        endYear: this.memo.endYear,
+        endMonth: this.memo.endMonth,
+        endDate: this.memo.endDate,
+        endHour: this.memo.endHour,
+        endMinute: this.memo.endMinute,
+        startTime: this.memo.startTime,
+        endTime: this.memo.endTime,
+        start: this.memo.start,
+        end: this.memo.end,
+        starttimes: this.memo.starttimes,
+        endtimes: this.memo.endtimes
+      }
+    })
+  },
+
+  delete() {
+    prompt.showDialog({
+      title: '提示',
+      message: '是否删除这条记录',
+      buttons: [
+        {
+          text: '确定',
+          color: '#ff2828'
+        },
+        {
+          text: '取消',
+          color: '#000000'
+        }
+      ],
+      success: data => {
+        console.log('handling callback', data)
+        if (data.index === 0) {
+          this.right = 0
+          this.$emit('delete', { index: this.index })
+          prompt.showToast({
+            message: '删除成功'
+          })
+        }
+      },
+      cancel: function () {
+        console.log('handling cancel')
+      },
+      fail: function (data, code) {
+        console.log(`handling fail, code = ${code}`)
+      }
+    })
+  },
+
+  calLabelColor(label) {
+    if (!label || label === '普通') {
+      return 'color: rgb(127,137,115);'
+    } else if (label === '一般') {
+      return 'color: rgb(161,165,183);'
+    } else {
+      return 'color: rgb(143,85,88);'
+    }
+  }
+}
+</script>
+
+<style lang="less">
+@import '../assets/styles/style.less';
+
+.delete-wrap {
+  .flex-box-mixins(row, flex-end, center);
+  width: 100%;
+  padding-right: 20px;
+  background-color: #ff2222;
+  image {
+    width: 20px;
+    height: 20px;
+  }
+}
+.finish-wrap {
+  .flex-box-mixins(row, flex-end, center);
+  width: 100%;
+  padding-right: 20px;
+  background-color: rgb(100, 184, 60);
+  image {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.status {
+  font-size: 10px;
+  margin-right: 20px;
+  width: 60px;
+}
+
+.memo-item {
+  .column;
+  /* position: relative; */
+  padding: 5px 10px;
+  border-bottom: 1px solid #eeeeee;
+  background-color: @bg-color;
+  .label {
+    .label-text;
+  }
+  .title {
+    width: 300px;
+    .title-text;
+    lines: 1;
+    text-overflow: ellipsis;
+    &-wrap {
+      justify-content: space-between;
+    }
+  }
+  .content {
+    width: 100%;
+    .content-text;
+    lines: 2;
+    text-overflow: ellipsis;
+    &-wrap {
+      margin-top: 10px;
+    }
+  }
+  .time {
+    font-size: 13px;
+    color: #dddddd;
+    line-height: 15px;
+    &-wrap {
+      justify-content: space-between;
+    }
+  }
+}
+</style>

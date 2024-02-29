@@ -1,0 +1,66 @@
+<template>
+  <div class="bar-wrap">
+    <div class="bar-item" onclick="clickBar('main')">
+      <image
+        src="{{current === 'main' ? '/assets/images/main-active.png' : '/assets/images/main.png'}}"
+      ></image>
+      <text style="color: {{current === 'main' ? '#1296db' : '#999999'}};"
+        >事项</text
+      >
+    </div>
+    <div class="bar-item" onclick="clickBar('me')">
+      <image
+        src="{{current === 'me' ? '/assets/images/me-active.png' : '/assets/images/me.png'}}"
+      ></image>
+      <text style="color: {{current === 'me' ? '#1296db' : '#999999'}};"
+        >统计</text
+      >
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      current: 'main'
+    }
+  },
+
+  clickBar(cur) {
+    this.current = cur
+    this.$emitElement('tap', {
+      current: this.current
+    })
+  }
+}
+</script>
+
+<style lang="less">
+@import '../assets/styles/style.less';
+
+.bar-wrap {
+  width: 100%;
+  height: 52px;
+  position: fixed;
+  bottom: 0;
+  padding: 0 15px;
+  .border-top;
+}
+
+.bar-item {
+  .flex-box-mixins;
+  width: 50%;
+  image {
+    width: 24px;
+    height: 24px;
+    margin-top: 7px;
+    margin-bottom: 2px;
+  }
+  text {
+    font-size: 10px;
+    text-align: center;
+    line-height: 13px;
+  }
+}
+</style>
